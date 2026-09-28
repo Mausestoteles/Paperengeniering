@@ -29,7 +29,12 @@ public abstract class ReadablePlayerCookieConnectionImpl implements ReadablePlay
 
         CompletableFuture<byte[]> future = new CompletableFuture<>();
         Identifier id = CraftNamespacedKey.toMinecraft(key);
-        this.requestedCookies.put(id, new CookieFuture(id, future));
+        // Hardening start - share an outstanding request for the same key instead of orphaning its future
+        final CookieFuture existing = this.requestedCookies.putIfAbsent(id, new CookieFuture(id, future));
+        if (existing != null) {
+            return existing.future();
+        }
+        // Hardening end
 
         this.connection.send(new ClientboundCookieRequestPacket(id));
 
@@ -37,10 +42,9 @@ public abstract class ReadablePlayerCookieConnectionImpl implements ReadablePlay
     }
 
     public boolean handleCookieResponse(ServerboundCookieResponsePacket packet) {
-        CookieFuture future = this.requestedCookies.get(packet.key());
+        CookieFuture future = this.requestedCookies.remove(packet.key()); // Hardening - atomic take
         if (future != null) {
             future.future().complete(packet.payload());
-            this.requestedCookies.remove(packet.key());
             return true;
         }
 

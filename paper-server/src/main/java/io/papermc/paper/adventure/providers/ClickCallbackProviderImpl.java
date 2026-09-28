@@ -70,16 +70,30 @@ public class ClickCallbackProviderImpl implements ClickCallback.Provider {
 
         @Override
         void doRunCallback(final @NotNull Audience audience, final Key key, final Tag tag) {
+            this.doRunCallback(audience, tag, null);
+        }
+
+        // Hardening start - only run dialog callbacks whose dialog was actually shown to this connection
+        public void tryRunCallback(final @NotNull Audience audience, final Identifier key, final Optional<? extends Tag> tag, final @NotNull java.util.Set<UUID> allowedIds) {
+            if (!PaperAdventure.asVanilla(DIALOG_CLICK_CALLBACK_KEY).equals(key) || tag.isEmpty()) return;
+            this.doRunCallback(audience, tag.get(), allowedIds);
+        }
+
+        private void doRunCallback(final @NotNull Audience audience, final Tag tag, final java.util.@org.jetbrains.annotations.Nullable Set<UUID> allowedIds) {
             tag.asCompound().ifPresent(t -> {
                 final Optional<UUID> id = t.read(ID_KEY, UUIDUtil.CODEC);
                 if (id.isEmpty()) {
                     return;
+                }
+                if (allowedIds != null && !allowedIds.contains(id.get())) {
+                    return; // dialog with this callback was never shown to this connection
                 }
                 this.tryConsumeCallback(id.get(), callback -> {
                     callback.accept(PaperDialogResponseView.createUnvalidatedResponse(t), audience);
                 });
             });
         }
+        // Hardening end
     }
 
 

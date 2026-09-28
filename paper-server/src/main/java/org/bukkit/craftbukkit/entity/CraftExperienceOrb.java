@@ -32,6 +32,7 @@ public class CraftExperienceOrb extends CraftEntity implements ExperienceOrb {
 
     @Override
     public void setCount(final int count) {
+        com.google.common.base.Preconditions.checkArgument(count > 0, "count must be positive (%s)", count); // Hardening
         this.getHandle().count = count;
     }
 

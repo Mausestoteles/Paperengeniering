@@ -1,6 +1,6 @@
 --- a/net/minecraft/world/inventory/MerchantResultSlot.java
 +++ b/net/minecraft/world/inventory/MerchantResultSlot.java
-@@ -59,13 +_,34 @@
+@@ -59,19 +_,45 @@
  
      @Override
      public void onTake(final Player player, final ItemStack carried) {
@@ -37,3 +37,16 @@
                  player.awardStat(Stats.TRADED_WITH_VILLAGER);
                  this.slots.setItem(0, buyA);
                  this.slots.setItem(1, buyB);
++                this.merchant.overrideXp(this.merchant.getVillagerXp() + offer.getXp()); // Paper - Hardening - only on a successful trade
++            } else {
++                // Paper start - Hardening - payment could not be taken (e.g. a plugin raised the price in the event): do not hand out the result
++                carried.setCount(0);
++                player.containerMenu.sendAllDataToRemote();
++                return;
++                // Paper end - Hardening
+             }
+-
+-            this.merchant.overrideXp(this.merchant.getVillagerXp() + offer.getXp());
+         }
+     }
+ }

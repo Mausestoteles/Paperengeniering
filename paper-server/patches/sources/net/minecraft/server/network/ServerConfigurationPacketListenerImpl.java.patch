@@ -101,9 +101,17 @@
                  return codeOfConduct;
              }));
          }
-@@ -130,12 +_,14 @@
+@@ -129,13 +_,22 @@
+ 
      @Override
      public void handleClientInformation(final ServerboundClientInformationPacket packet) {
++        // Paper start - Hardening - same validation as in the game phase
++        if (packet.information().viewDistance() < 0) {
++            LOGGER.warn("Disconnecting {} for invalid view distance: {}", this.playerProfile().name(), packet.information().viewDistance());
++            this.disconnect(net.minecraft.network.chat.Component.literal("Invalid client settings"), io.papermc.paper.connection.DisconnectionReason.game(org.bukkit.event.player.PlayerKickEvent.Cause.ILLEGAL_ACTION));
++            return;
++        }
++        // Paper end - Hardening
          this.clientInformation = packet.information();
 +        this.connection.channel.attr(io.papermc.paper.adventure.PaperAdventure.LOCALE_ATTRIBUTE).set(net.kyori.adventure.translation.Translator.parseLocale(packet.information().language())); // Paper
      }
@@ -126,6 +134,19 @@
              if (loginError != null) {
                  this.disconnect(loginError);
                  return;
+@@ -223,6 +_,12 @@
+     }
+ 
+     public void finishCurrentTask(final ConfigurationTask.Type taskTypeToFinish) {
++        // Paper start - Hardening - task transitions (e.g. after async configure events) must happen on the main thread
++        if (!this.server.isSameThread()) {
++            this.server.execute(() -> this.finishCurrentTask(taskTypeToFinish));
++            return;
++        }
++        // Paper end - Hardening
+         ConfigurationTask.Type currentTaskType = this.currentTask != null ? this.currentTask.type() : null;
+         if (!taskTypeToFinish.equals(currentTaskType)) {
+             throw new IllegalStateException("Unexpected request for task finish, current task: " + currentTaskType + ", requested: " + taskTypeToFinish);
 @@ -231,4 +_,29 @@
          this.currentTask = null;
          this.startNextTask();

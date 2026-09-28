@@ -32,11 +32,19 @@
          this.mountContainer = mountInventory;
          this.mount = mount;
          mountInventory.startOpen(playerInventory.player);
-@@ -25,6 +_,7 @@
+@@ -25,10 +_,12 @@
  
      @Override
      public boolean stillValid(final Player player) {
+-        return !this.hasInventoryChanged(this.mountContainer)
+-            && this.mountContainer.stillValid(player)
+-            && this.mount.isAlive()
++        // Paper start - Hardening - API-opened menus may skip the reach check, but never the liveness / stale-container check
++        if (this.hasInventoryChanged(this.mountContainer) || !this.mount.isAlive()) return false;
 +        if (!this.checkReachable) return true; // CraftBukkit
-         return !this.hasInventoryChanged(this.mountContainer)
-             && this.mountContainer.stillValid(player)
-             && this.mount.isAlive()
++        return this.mountContainer.stillValid(player)
+             && player.isWithinEntityInteractionRange(this.mount, 4.0);
++        // Paper end - Hardening
+     }
+ 
+     @Override

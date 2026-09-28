@@ -557,6 +557,7 @@ public class CraftInventory implements Inventory {
 
     @Override
     public void setMaxStackSize(int size) {
+        com.google.common.base.Preconditions.checkArgument(size >= 1, "max stack size must be at least 1 (%s)", size); // Hardening
         this.inventory.setMaxStackSize(size);
     }
 

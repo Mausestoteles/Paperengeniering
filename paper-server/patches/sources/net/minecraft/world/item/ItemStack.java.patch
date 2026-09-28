@@ -28,6 +28,15 @@
                      ItemStack.CODEC.encodeStart(ops, itemStack).getOrThrow(DecoderException::new);
                  }
  
+@@ -332,7 +_,7 @@
+     }
+ 
+     public ItemStack split(final int amount) {
+-        int realAmount = Math.min(amount, this.getCount());
++        int realAmount = Math.max(0, Math.min(amount, this.getCount())); // Paper - Hardening - a negative amount would grow the source stack
+         ItemStack result = this.copyWithCount(realAmount);
+         this.shrink(realAmount);
+         return result;
 @@ -369,12 +_,141 @@
          } else {
              ItemStack stackBeforeUse = this.copy();

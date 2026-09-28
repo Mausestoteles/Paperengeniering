@@ -124,7 +124,7 @@
                      return this.consumeWithRemainder(source, dispensed, new ItemStack(Items.BUCKET));
                  } else {
                      return this.defaultDispenseItemBehavior.dispense(source, dispensed);
-@@ -170,13 +_,20 @@
+@@ -170,14 +_,30 @@
                  BlockPos target = source.pos().relative(source.state().getValue(DispenserBlock.FACING));
                  BlockState blockState = level.getBlockState(target);
                  if (blockState.getBlock() instanceof BucketPickup bucket) {
@@ -136,16 +136,27 @@
  
                      level.gameEvent(null, GameEvent.FLUID_PICKUP, target);
                      Item targetType = pickup.getItem();
+-                    return this.consumeWithRemainder(source, dispensed, new ItemStack(targetType));
 +                    // Paper start - Call BlockDispenseEvent
 +                    ItemStack result = org.bukkit.craftbukkit.event.CraftEventFactory.handleBlockDispenseEvent(source, target, dispensed, this);
 +                    if (result != null) {
 +                        return result;
 +                    }
 +                    // Paper end - Call BlockDispenseEvent
-+                    pickup = bucket.pickupBlock(null, level, target, blockState); // CraftBukkit - from above
-                     return this.consumeWithRemainder(source, dispensed, new ItemStack(targetType));
++                    // Paper start - Hardening - the event may have changed the world; re-read the state and only hand out what was actually picked up
++                    BlockState currentState = level.getBlockState(target);
++                    if (currentState != blockState || !(currentState.getBlock() instanceof BucketPickup currentBucket)) {
++                        return dispensed;
++                    }
++                    pickup = currentBucket.pickupBlock(null, level, target, currentState); // CraftBukkit - from above
++                    if (pickup.isEmpty()) {
++                        return dispensed;
++                    }
++                    return this.consumeWithRemainder(source, dispensed, pickup);
++                    // Paper end - Hardening
                  } else {
                      return super.execute(source, dispensed);
+                 }
 @@ -190,11 +_,54 @@
                  this.setSuccess(true);
                  Level level = source.level();

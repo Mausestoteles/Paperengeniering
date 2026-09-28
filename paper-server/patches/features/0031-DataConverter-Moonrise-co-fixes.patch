@@ -5,10 +5,10 @@ Subject: [PATCH] DataConverter, Moonrise & co fixes
 
 
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-index cc0d455f88bc7c5798ea27abfaa3333c2656eb92..e24c7e2db785bce4a8801373d8e2bcd25477dbb6 100644
+index b20dcabef28cdfe5dcf1c52a627db4e0658ffc42..9c00906ae893e3ad5035ac24e40bad5bd4c21a9b 100644
 --- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-@@ -1856,9 +1856,14 @@ public class ServerGamePacketListenerImpl
+@@ -1861,9 +1861,14 @@ public class ServerGamePacketListenerImpl
      private boolean hasNewCollision(final ServerLevel level, final Entity entity, final AABB oldBox, final AABB newBox) {
          final List<AABB> collisionsBB = new java.util.ArrayList<>();
          final List<VoxelShape> collisionsVoxel = new java.util.ArrayList<>();

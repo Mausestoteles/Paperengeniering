@@ -95,12 +95,17 @@
      public void disconnect(final Component component) {
          try {
              LOGGER.info("Disconnecting {}: {}", this.getUserName(), component.getString());
-@@ -116,7 +_,14 @@
+@@ -116,7 +_,19 @@
      @Override
      public void handleHello(final ServerboundHelloPacket packet) {
          Validate.validState(this.state == ServerLoginPacketListenerImpl.State.HELLO, "Unexpected hello packet");
 -        Validate.validState(StringUtil.isValidPlayerName(packet.name()), "Invalid characters in username");
 +        // Paper start - Validate usernames
++        // Hardening - always keep vanilla's baseline name check (no control characters, spaces, empty names) even in
++        // offline mode without a proxy; the stricter check below additionally applies in proxy-online-mode.
++        if (!this.iKnowThisMayNotBeTheBestIdeaButPleaseDisableUsernameValidation) {
++            Validate.validState(!packet.name().isEmpty() && StringUtil.isValidPlayerName(packet.name()), "Invalid characters in username");
++        }
 +        if (io.papermc.paper.configuration.GlobalConfiguration.get().proxies.isProxyOnlineMode()
 +            && io.papermc.paper.configuration.GlobalConfiguration.get().unsupportedSettings.performUsernameValidation
 +            && !this.iKnowThisMayNotBeTheBestIdeaButPleaseDisableUsernameValidation) {

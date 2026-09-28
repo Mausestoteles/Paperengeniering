@@ -96,6 +96,26 @@
                      sendFlushAndClose(ctx, createLegacyDisconnectPacket(ctx.alloc(), body));
                  }
  
+@@ -62,9 +_,16 @@
+             }
+         } finally {
+             if (connectNormally) {
+-                in.resetReaderIndex();
+-                ctx.channel().pipeline().remove(this);
+-                ctx.fireChannelRead(msg);
++                // Paper start - Hardening - readLegacy1_6 may already have removed this handler and forwarded its own
++                // buffer; removing again throws NoSuchElementException and leaks the inbound buffer. Guard against it.
++                if (ctx.isRemoved()) {
++                    in.release();
++                } else {
++                    in.resetReaderIndex();
++                    ctx.channel().pipeline().remove(this);
++                    ctx.fireChannelRead(msg);
++                }
++                // Paper end - Hardening
+             }
+         }
+     }
 @@ -110,6 +_,96 @@
              server.getMaxPlayers()
          );

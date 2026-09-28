@@ -107,7 +107,7 @@
  
                      for (Slot slot : this.quickcraftSlots) {
                          ItemStack carriedItemStack = this.getCarried();
-@@ -389,12 +_,42 @@
+@@ -389,12 +_,55 @@
                              int maxSize = Math.min(source.getMaxStackSize(), slot.getMaxStackSize(source));
                              int newCount = Math.min(getQuickCraftPlaceCount(this.quickcraftSlots.size(), this.quickcraftType, source) + carry, maxSize);
                              remaining -= newCount - carry;
@@ -133,7 +133,8 @@
 +
 +                    // It's essential that we set the cursor to the new value here to prevent item duplication if a plugin closes the inventory.
 +                    ItemStack oldCarried = this.getCarried();
-+                    this.setCarried(org.bukkit.craftbukkit.inventory.CraftItemStack.asNMSCopy(newCarried));
++                    final ItemStack preEventCarried = org.bukkit.craftbukkit.inventory.CraftItemStack.asNMSCopy(newCarried); // Paper - Hardening
++                    this.setCarried(preEventCarried);
 +
 +                    org.bukkit.event.inventory.InventoryDragEvent event = new org.bukkit.event.inventory.InventoryDragEvent(
 +                        view,
@@ -144,14 +145,26 @@
 +                    );
 +                    event.callEvent();
 +
++                    // Paper start - Hardening - if a plugin closed the inventory during the event, removed() already returned the cursor to the
++                    // player's inventory; restoring the cursor again would duplicate the leftover (or, for block menus, write into a closed menu)
++                    final boolean closedDuringEvent = player.containerMenu != this || this.getCarried() != preEventCarried;
 +                    if (event.getResult() != org.bukkit.event.Event.Result.DENY) {
 +                        for (final it.unimi.dsi.fastutil.ints.Int2ObjectMap.Entry<net.minecraft.world.item.ItemStack> entry : draggedSlots.int2ObjectEntrySet()) {
 +                            view.setItem(entry.getIntKey(), org.bukkit.craftbukkit.inventory.CraftItemStack.asBukkitCopy(entry.getValue()));
 +                        }
-+                        this.setCarried(org.bukkit.craftbukkit.inventory.CraftItemStack.asNMSCopy(event.getCursor()));
-+                    } else {
++                        if (!closedDuringEvent) {
++                            this.setCarried(org.bukkit.craftbukkit.inventory.CraftItemStack.asNMSCopy(event.getCursor()));
++                        }
++                    } else if (!closedDuringEvent) {
 +                        this.setCarried(oldCarried);
++                    } else {
++                        // the leftover already went back via removed(); return only the part that was going to be dragged
++                        final int dragged = oldCarried.getCount() - remaining;
++                        if (dragged > 0 && player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
++                            serverPlayer.getInventory().placeItemBackInInventory(oldCarried.copyWithCount(dragged), Prediction.SERVER_ONLY);
++                        }
 +                    }
++                    // Paper end - Hardening
 +                    // CraftBukkit end
                  }
  
@@ -169,7 +182,18 @@
                      } else {
                          player.drop(this.getCarried().split(1), true, Prediction.PREDICTED);
                      }
-@@ -471,8 +_,18 @@
+@@ -463,16 +_,28 @@
+                         } else if (ItemStack.isSameItemSameComponents(clicked, carried)) {
+                             Optional<ItemStack> newCarried = slot.tryRemove(clicked.getCount(), carried.getMaxStackSize() - carried.getCount(), player);
+                             newCarried.ifPresent(itemsTaken -> {
++                                // Paper start - Hardening - run onTake first: a cancelled trade/purchase zeroes itemsTaken, growing the cursor beforehand duplicated the result
++                                slot.onTake(player, itemsTaken);
+                                 carried.grow(itemsTaken.getCount());
+-                                slot.onTake(player, itemsTaken);
++                                // Paper end - Hardening
+                             });
+                         }
+                     }
                  }
  
                  slot.setChanged();

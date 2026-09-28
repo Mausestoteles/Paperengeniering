@@ -138,12 +138,13 @@
      }
  
      private void merge(final ExperienceOrb orb) {
+-        this.count = this.count + orb.count;
 +        // Paper start - call orb merge event
 +        if (!new com.destroystokyo.paper.event.entity.ExperienceOrbMergeEvent((org.bukkit.entity.ExperienceOrb) this.getBukkitEntity(), (org.bukkit.entity.ExperienceOrb) orb.getBukkitEntity()).callEvent()) {
 +            return;
 +        }
 +        // Paper end - call orb merge event
-         this.count = this.count + orb.count;
++        this.count = (int) Math.min(Integer.MAX_VALUE, (long) this.count + orb.count); // Paper - Hardening - no int overflow
          this.age = Math.min(this.age, orb.age);
 -        orb.discard();
 +        orb.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.MERGE); // CraftBukkit - add Bukkit remove cause
@@ -194,13 +195,14 @@
                  }
  
                  this.count--;
-                 if (this.count == 0) {
+-                if (this.count == 0) {
 -                    this.discard();
++                if (this.count <= 0) { // Paper - Hardening - orbs with count <= 0 (API) must not give XP forever
 +                    this.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.PICKUP); // CraftBukkit - add Bukkit remove cause
                  }
              }
          }
-@@ -301,9 +_,19 @@
+@@ -301,9 +_,23 @@
              ItemStack itemStack = selected.get().itemStack();
              int toRepairFromXpAmount = EnchantmentHelper.modifyDurabilityToRepairFromXp(player.level(), itemStack, amount);
              int repair = Math.min(toRepairFromXpAmount, itemStack.getDamageValue());
@@ -215,9 +217,14 @@
 +            }
 +            // CraftBukkit end
              itemStack.setDamageValue(itemStack.getDamageValue() - repair);
-             if (repair > 0) {
+-            if (repair > 0) {
 -                int remaining = amount - repair * amount / toRepairFromXpAmount;
-+                int remaining = amount - repair * amount / toRepairFromXpAmount; // Paper - diff on change - expand PlayerMendEvents
++            if (repair > 0 && toRepairFromXpAmount > 0) { // Paper - Hardening - guard division by zero
++                // Paper start - Hardening - always consume at least one XP per repaired durability, otherwise a lowered repair amount
++                // repairs for free and recurses once per durability point (StackOverflowError on huge max_damage)
++                final int consumed = Math.max(1, net.minecraft.util.Mth.ceil((double) repair * amount / toRepairFromXpAmount));
++                int remaining = amount - Math.min(amount, consumed); // Paper - diff on change - expand PlayerMendEvents
++                // Paper end - Hardening
                  if (remaining > 0) {
                      return this.repairPlayerItems(player, remaining);
                  }

@@ -59,6 +59,14 @@
              itemUsed = true;
          }
  
+@@ -526,6 +_,7 @@
+                     this.spawnAtLocation(level, itemStack);
+                 }
+             }
++            this.postDeathEventTasks.add(this.inventory::clearContent); // Paper - Hardening - drops are copies; clear the inventory like Allay/Piglin so a revived horse does not keep the items
+         }
+     }
+ 
 @@ -538,7 +_,7 @@
          super.aiStep();
          if (this.level() instanceof ServerLevel level && this.isAlive()) {

@@ -58,10 +58,40 @@
          JsonArray result = new JsonArray();
          this.map.values().stream().map(entry -> Util.make(new JsonObject(), entry::serialize)).forEach(result::add);
  
-@@ -153,7 +_,14 @@
-                         this.map.put(this.getKeyForUser(entry.getUser()), (V)entry);
+@@ -140,20 +_,34 @@
+     public void load() throws IOException {
+         if (this.file.exists()) {
+             try (BufferedReader reader = Files.newReader(this.file, StandardCharsets.UTF_8)) {
+-                this.map.clear();
++                // Paper start - Hardening - parse into a temporary map and isolate bad entries; a single invalid entry
++                // must not drop every following entry (e.g. lift all later bans), and a broken file must not clear the in-memory list
+                 JsonArray contents = GSON.fromJson(reader, JsonArray.class);
+-                if (contents == null) {
+-                    return;
+-                }
+-
+-                for (JsonElement element : contents) {
+-                    JsonObject object = GsonHelper.convertToJsonObject(element, "entry");
+-                    StoredUserEntry<K> entry = this.createEntry(object);
+-                    if (entry.getUser() != null) {
+-                        this.map.put(this.getKeyForUser(entry.getUser()), (V)entry);
++                final Map<String, V> loaded = com.google.common.collect.Maps.newHashMap();
++                if (contents != null) {
++                    for (JsonElement element : contents) {
++                        try {
++                            JsonObject object = GsonHelper.convertToJsonObject(element, "entry");
++                            StoredUserEntry<K> entry = this.createEntry(object);
++                            if (entry.getUser() != null) {
++                                loaded.put(this.getKeyForUser(entry.getUser()), (V)entry);
++                            }
++                        } catch (RuntimeException ex) {
++                            LOGGER.warn("Skipping invalid entry in {}: {}", this.file, element, ex);
++                        }
                      }
                  }
++                this.map.clear();
++                this.map.putAll(loaded);
++                // Paper end - Hardening
 +            // Spigot start
 +            } catch (com.google.gson.JsonParseException | NullPointerException ex) {
 +                File backup = new File(this.file + ".backup");

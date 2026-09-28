@@ -320,7 +320,7 @@ index e6a674eb859af1e98fe25b644c1c5f70728128d0..936200d7620e1fe83eb45ddbcff86b6b
              this.channel.pipeline().fireUserEventTriggered(io.papermc.paper.network.ConnectionEvent.COMPRESSION_THRESHOLD_SET); // Paper - Add Channel initialization listeners
          } else {
 diff --git a/net/minecraft/server/network/ServerConnectionListener.java b/net/minecraft/server/network/ServerConnectionListener.java
-index c2b09a693daf8b4d3d274c07b3be37ba4fc1a483..2f3b58491ef7be8cd2e081f2c44869cd1e50e6a6 100644
+index c94dad27fb569d4c3101da2148f0fb0d636ff782..bab7e51ef693644df52b418f7adbc5ac66992a90 100644
 --- a/net/minecraft/server/network/ServerConnectionListener.java
 +++ b/net/minecraft/server/network/ServerConnectionListener.java
 @@ -71,6 +71,10 @@ public class ServerConnectionListener {
@@ -335,10 +335,10 @@ index c2b09a693daf8b4d3d274c07b3be37ba4fc1a483..2f3b58491ef7be8cd2e081f2c44869cd
                  .add(
                      new ServerBootstrap()
 diff --git a/net/minecraft/server/network/ServerLoginPacketListenerImpl.java b/net/minecraft/server/network/ServerLoginPacketListenerImpl.java
-index dd2c5b7bd16ca17e253501fbc49cc21c8a06d603..a1855a257c3ac801bbd371ca4508af755550d737 100644
+index e947aeaf6cbd03b0fa29beb6a0cc79d3ff4dab2c..da5eacc04cbe19884846ea9382c8c0e408bccb5c 100644
 --- a/net/minecraft/server/network/ServerLoginPacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerLoginPacketListenerImpl.java
-@@ -256,9 +256,7 @@ public class ServerLoginPacketListenerImpl implements ServerLoginPacketListener,
+@@ -261,9 +261,7 @@ public class ServerLoginPacketListenerImpl implements ServerLoginPacketListener,
              SecretKey secretKey = packet.getSecretKey(serverPrivateKey);
              digest = new BigInteger(Crypt.digestData("", this.server.getKeyPair().getPublic(), secretKey)).toString(16);
              this.state = ServerLoginPacketListenerImpl.State.AUTHENTICATING;

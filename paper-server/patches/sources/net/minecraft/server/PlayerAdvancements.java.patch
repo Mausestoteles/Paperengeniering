@@ -1,8 +1,10 @@
 --- a/net/minecraft/server/PlayerAdvancements.java
 +++ b/net/minecraft/server/PlayerAdvancements.java
-@@ -48,7 +_,7 @@
+@@ -47,8 +_,9 @@
+ import org.slf4j.Logger;
  
  public class PlayerAdvancements {
++    private final Set<AdvancementHolder> rewarded = new HashSet<>(); // Paper - Hardening - guards against double reward grants
      private static final Logger LOGGER = LogUtils.getLogger();
 -    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 +    private static final Gson GSON = new GsonBuilder().create(); // Paper - Remove pretty printing from advancements
@@ -25,7 +27,7 @@
                  LOGGER.warn("Ignored advancement '{}' in progress file {} - it doesn't exist anymore?", id, this.playerSavePath);
              } else {
                  this.startProgress(advancement, progress);
-@@ -169,14 +_,30 @@
+@@ -169,14 +_,31 @@
          AdvancementProgress progress = this.getOrStartProgress(holder);
          boolean wasDone = progress.isDone();
          if (progress.grantProgress(criterion)) {
@@ -47,6 +49,7 @@
 +                final org.bukkit.event.player.PlayerAdvancementDoneEvent event = new org.bukkit.event.player.PlayerAdvancementDoneEvent(this.player.getBukkitEntity(), holder.toBukkit(), message);
 +                this.player.level().getCraftServer().getPluginManager().callEvent(event); // CraftBukkit
 +                // Paper end
++                if (this.rewarded.add(holder)) // Paper - Hardening - a re-entrant award from an event listener must not grant rewards twice
                  holder.value().rewards().grant(this.player);
                  holder.value().display().ifPresent(display -> {
 -                    if (display.announceToChat() && this.player.level().getGameRules().get(GameRules.SHOW_ADVANCEMENT_MESSAGES)) {
@@ -58,6 +61,14 @@
                      }
                  });
              }
+@@ -200,6 +_,7 @@
+         }
+ 
+         if (wasDone && !progress.isDone()) {
++            this.rewarded.remove(advancement); // Paper - Hardening
+             this.markForVisibilityUpdate(advancement);
+         }
+ 
 @@ -239,7 +_,7 @@
      public void flushDirty(final ServerPlayer player, final boolean showAdvancements) {
          if (this.isFirstPacket || !this.rootsToUpdate.isEmpty() || !this.progressChanged.isEmpty()) {

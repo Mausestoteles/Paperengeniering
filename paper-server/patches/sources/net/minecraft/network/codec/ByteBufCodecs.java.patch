@@ -15,7 +15,7 @@
                  if (result == null) {
                      throw new DecoderException("Expected non-null compound tag");
                  } else {
-@@ -461,6 +_,48 @@
+@@ -461,6 +_,54 @@
          };
      }
  
@@ -50,7 +50,13 @@
 +                if (++buffer.codecDepth > 64) {
 +                    throw new DecoderException("Too deep");
 +                }
-+                return codec.decode(buffer);
++                // Paper start - Hardening - track actual nesting depth, not the total number of nested codecs seen
++                try {
++                    return codec.decode(buffer);
++                } finally {
++                    buffer.codecDepth--;
++                }
++                // Paper end - Hardening
 +            }
 +
 +            @Override

@@ -5,10 +5,10 @@ Subject: [PATCH] Remove debug-like logging
 
 
 diff --git a/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-index b84690962b9f797f95778a7ecbe0c4e398643643..8305d15e8510c09e4a3cdaa78ff1f96a620fc940 100644
+index 2665f2f26b8e603f5b658b8ead97a2d9307b7347..4478a90afb7dbbca23e5dc840e241eb32f45b7a7 100644
 --- a/net/minecraft/server/network/ServerGamePacketListenerImpl.java
 +++ b/net/minecraft/server/network/ServerGamePacketListenerImpl.java
-@@ -1760,7 +1760,7 @@ public class ServerGamePacketListenerImpl
+@@ -1765,7 +1765,7 @@ public class ServerGamePacketListenerImpl
      private void forceSendPlayerSupportBlocks() {
          if (this.tickCount >= this.lastSupportedBlocksSend + 200) {
              this.lastSupportedBlocksSend = this.tickCount;

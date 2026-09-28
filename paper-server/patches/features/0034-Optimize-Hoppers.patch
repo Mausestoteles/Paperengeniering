@@ -60,7 +60,7 @@ index b675e9322234761a69e71e9e8b9d41364caf34b6..c3bf41af0273e902f881cc070fcef6dd
              profiler.push("tick");
  
 diff --git a/net/minecraft/world/item/ItemStack.java b/net/minecraft/world/item/ItemStack.java
-index 4ad6def926393a83abddee39d7f547a368a979c9..00861318771cd184c9f75a9a036deee9ec2ba310 100644
+index 030bb1b300f66c5348a015e7f2036648c4e91e90..21257ccc0d9acb9dbec9462d7a234f3e6a1e19cb 100644
 --- a/net/minecraft/world/item/ItemStack.java
 +++ b/net/minecraft/world/item/ItemStack.java
 @@ -785,11 +785,17 @@ public final class ItemStack implements DataComponentHolder, ItemInstance {
@@ -104,7 +104,7 @@ index d3f17088d8f0592ef1231cf3f8bb3ca83170de0b..ddda24a55201de2136fc6dd2cb863d60
          }
      }
 diff --git a/net/minecraft/world/level/block/entity/HopperBlockEntity.java b/net/minecraft/world/level/block/entity/HopperBlockEntity.java
-index 30f681ba31c3b7997ef0d1d6153e9339fb4b2d3b..86f005e755f58f9f6a674a5065444fa08ae9ec08 100644
+index 30f681ba31c3b7997ef0d1d6153e9339fb4b2d3b..56b150ad3f2c794f58fad5f97ab010a3e1bd25eb 100644
 --- a/net/minecraft/world/level/block/entity/HopperBlockEntity.java
 +++ b/net/minecraft/world/level/block/entity/HopperBlockEntity.java
 @@ -142,6 +142,43 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
@@ -166,7 +166,7 @@ index 30f681ba31c3b7997ef0d1d6153e9339fb4b2d3b..86f005e755f58f9f6a674a5065444fa0
                  changed |= action.getAsBoolean();
              }
  
-@@ -179,67 +217,218 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+@@ -179,67 +217,231 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
          return true;
      }
  
@@ -203,14 +203,18 @@ index 30f681ba31c3b7997ef0d1d6153e9339fb4b2d3b..86f005e755f58f9f6a674a5065444fa0
 +                    }
 +                }
 +
++                // Paper start - Hardening - a plugin-supplied replacement stack must never be credited back to the source
++                final boolean replaced = movedItem != origItemStack;
++                final int movedInitialCount = movedItem.getCount();
 +                final ItemStack remainingItem = addItem(hopper, destination, movedItem, direction);
 +                final int remainingItemCount = remainingItem.getCount();
-+                if (remainingItemCount != movedItemCount) {
++                if (remainingItemCount != movedInitialCount) {
 +                    origItemStack = origItemStack.copy(true);
 +                    origItemStack.setCount(originalItemCount);
 +                    if (!origItemStack.isEmpty()) {
-+                        origItemStack.setCount(originalItemCount - movedItemCount + remainingItemCount);
++                        origItemStack.setCount(originalItemCount - movedItemCount + (replaced ? 0 : remainingItemCount));
 +                    }
++                    // Paper end - Hardening
 +                    hopper.setItem(i, origItemStack);
 +                    destination.setChanged();
 +                    return true;
@@ -264,14 +268,18 @@ index 30f681ba31c3b7997ef0d1d6153e9339fb4b2d3b..86f005e755f58f9f6a674a5065444fa0
 -                } else {
 -                    destinationInventory = new org.bukkit.craftbukkit.inventory.CraftInventory(container);
 -                }
++        // Paper start - Hardening - a plugin-supplied replacement stack must never be credited back to the source
++        final boolean replaced = movedItem != origItemStack;
++        final int movedInitialCount = movedItem.getCount();
 +        final ItemStack remainingItem = addItem(container, hopper, movedItem, null);
 +        final int remainingItemCount = remainingItem.getCount();
-+        if (remainingItemCount != movedItemCount) {
++        if (remainingItemCount != movedInitialCount) {
 +            origItemStack = origItemStack.copy(true);
 +            origItemStack.setCount(originalItemCount);
 +            if (!origItemStack.isEmpty()) {
-+                origItemStack.setCount(originalItemCount - movedItemCount + remainingItemCount);
++                origItemStack.setCount(originalItemCount - movedItemCount + (replaced ? 0 : remainingItemCount));
 +            }
++            // Paper end - Hardening
 +
 +            ignoreBlockEntityUpdates = true;
 +            container.setItem(i, origItemStack);
@@ -291,9 +299,10 @@ index 30f681ba31c3b7997ef0d1d6153e9339fb4b2d3b..86f005e755f58f9f6a674a5065444fa0
 +    @Nullable
 +    private static ItemStack callPushMoveEvent(Container destination, ItemStack itemStack, HopperBlockEntity hopper) {
 +        final org.bukkit.inventory.Inventory destinationInventory = getInventory(destination);
++        final ItemStack eventStack = itemStack.copy(); // Paper - Hardening - never expose the live source slot stack to plugins
 +        final io.papermc.paper.event.inventory.PaperInventoryMoveItemEvent event = new io.papermc.paper.event.inventory.PaperInventoryMoveItemEvent(
 +            hopper.getOwner(false).getInventory(),
-+            org.bukkit.craftbukkit.inventory.CraftItemStack.asBukkitMirror(itemStack),
++            org.bukkit.craftbukkit.inventory.CraftItemStack.asBukkitMirror(eventStack),
 +            destinationInventory,
 +            true
 +        );
@@ -308,6 +317,8 @@ index 30f681ba31c3b7997ef0d1d6153e9339fb4b2d3b..86f005e755f58f9f6a674a5065444fa0
 +
 +        if (event.calledSetItem) {
 +            return org.bukkit.craftbukkit.inventory.CraftItemStack.asNMSCopy(event.getItem());
++        } else if (event.calledGetItem && !ItemStack.matches(eventStack, itemStack)) {
++            return eventStack; // Paper - Hardening - mutated through getItem(): treat like a replacement
 +        } else {
 +            return itemStack;
 +        }
@@ -318,8 +329,8 @@ index 30f681ba31c3b7997ef0d1d6153e9339fb4b2d3b..86f005e755f58f9f6a674a5065444fa0
 +        final org.bukkit.inventory.Inventory sourceInventory = getInventory(container);
 +        final org.bukkit.inventory.Inventory destination = getInventory(hopper);
 +
-+        // Mirror is safe as no plugins ever use this item
-+        final io.papermc.paper.event.inventory.PaperInventoryMoveItemEvent event = new io.papermc.paper.event.inventory.PaperInventoryMoveItemEvent(sourceInventory, org.bukkit.craftbukkit.inventory.CraftItemStack.asBukkitMirror(itemstack), destination, false);
++        final ItemStack eventStack = itemstack.copy(); // Paper - Hardening - never expose the live source slot stack to plugins
++        final io.papermc.paper.event.inventory.PaperInventoryMoveItemEvent event = new io.papermc.paper.event.inventory.PaperInventoryMoveItemEvent(sourceInventory, org.bukkit.craftbukkit.inventory.CraftItemStack.asBukkitMirror(eventStack), destination, false);
 +        final boolean result = event.callEvent();
 +        if (!event.calledGetItem && !event.calledSetItem) {
 +            skipPullModeEventFire = true;
@@ -331,6 +342,8 @@ index 30f681ba31c3b7997ef0d1d6153e9339fb4b2d3b..86f005e755f58f9f6a674a5065444fa0
 +
 +        if (event.calledSetItem) {
 +            return org.bukkit.craftbukkit.inventory.CraftItemStack.asNMSCopy(event.getItem());
++        } else if (event.calledGetItem && !ItemStack.matches(eventStack, itemstack)) {
++            return eventStack; // Paper - Hardening - mutated through getItem(): treat like a replacement
 +        } else {
 +            return itemstack;
 +        }
@@ -433,7 +446,7 @@ index 30f681ba31c3b7997ef0d1d6153e9339fb4b2d3b..86f005e755f58f9f6a674a5065444fa0
      }
  
      private static int[] getSlots(final Container container, final Direction direction) {
-@@ -292,6 +481,7 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+@@ -292,6 +494,7 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
          Container container = getSourceContainer(level, hopper, blockPos, blockState);
          if (container != null) {
              Direction direction = Direction.DOWN;
@@ -441,7 +454,7 @@ index 30f681ba31c3b7997ef0d1d6153e9339fb4b2d3b..86f005e755f58f9f6a674a5065444fa0
  
              for (int slot : getSlots(container, direction)) {
                  if (tryTakeInItemFromSlot(hopper, container, slot, direction, level)) { // Spigot
-@@ -319,54 +509,7 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+@@ -319,54 +522,7 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
      private static boolean tryTakeInItemFromSlot(final Hopper hopper, final Container container, final int slot, final Direction direction, final Level level) { // Spigot
          ItemStack itemStack = container.getItem(slot);
          if (!itemStack.isEmpty() && canTakeItemFromContainer(hopper, container, itemStack, slot, direction)) {
@@ -497,7 +510,7 @@ index 30f681ba31c3b7997ef0d1d6153e9339fb4b2d3b..86f005e755f58f9f6a674a5065444fa0
          }
  
          return false;
-@@ -375,13 +518,15 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+@@ -375,13 +531,15 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
      public static boolean addItem(final Container container, final ItemEntity entity) {
          boolean changed = false;
          // CraftBukkit start
@@ -514,7 +527,7 @@ index 30f681ba31c3b7997ef0d1d6153e9339fb4b2d3b..86f005e755f58f9f6a674a5065444fa0
          ItemStack copy = entity.getItem().copy();
          ItemStack result = addItem(null, container, copy, null);
          if (result.isEmpty()) {
-@@ -440,7 +585,9 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+@@ -440,7 +598,9 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
                      itemStack = itemStack.split(container.getMaxStackSize());
                  }
                  // Spigot end
@@ -524,7 +537,7 @@ index 30f681ba31c3b7997ef0d1d6153e9339fb4b2d3b..86f005e755f58f9f6a674a5065444fa0
                  itemStack = leftover; // Paper - Make hoppers respect inventory max stack size
                  success = true;
              } else if (canMergeItems(current, itemStack)) {
-@@ -526,14 +673,22 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+@@ -526,14 +686,22 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
      }
  
      public static @Nullable Container getContainerAt(final Level level, final BlockPos pos) {
@@ -549,7 +562,7 @@ index 30f681ba31c3b7997ef0d1d6153e9339fb4b2d3b..86f005e755f58f9f6a674a5065444fa0
              result = getEntityContainer(level, x, y, z);
          }
  
-@@ -557,14 +712,14 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
+@@ -557,14 +725,14 @@ public class HopperBlockEntity extends RandomizableContainerBlockEntity implemen
      }
  
      private static @Nullable Container getEntityContainer(final Level level, final double x, final double y, final double z) {

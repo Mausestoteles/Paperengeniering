@@ -381,7 +381,7 @@ index 1480d0db90f5797e3dee19503e52d1e783493ac3..bd76e55ea56dd7c1e232806d1d13a747
 +    // Paper end
  }
 diff --git a/net/minecraft/server/network/ServerConnectionListener.java b/net/minecraft/server/network/ServerConnectionListener.java
-index cb1c3b82eab2f45e550f104b0b3911ce8f852c93..c2b09a693daf8b4d3d274c07b3be37ba4fc1a483 100644
+index 2c177a7d060b4785ddc8ec61596a38e798ad6078..c94dad27fb569d4c3101da2148f0fb0d636ff782 100644
 --- a/net/minecraft/server/network/ServerConnectionListener.java
 +++ b/net/minecraft/server/network/ServerConnectionListener.java
 @@ -43,6 +43,7 @@ import org.jspecify.annotations.Nullable;
@@ -400,7 +400,7 @@ index cb1c3b82eab2f45e550f104b0b3911ce8f852c93..c2b09a693daf8b4d3d274c07b3be37ba
                                      ChannelPipeline pipeline = channel.pipeline().addLast(HandlerNames.TIMEOUT, new ReadTimeoutHandler(30));
                                      if (ServerConnectionListener.this.server.repliesToStatus()) {
                                          pipeline.addLast(HandlerNames.LEGACY_QUERY, new LegacyQueryHandler(ServerConnectionListener.this.getServer()));
-@@ -315,6 +317,7 @@ public class ServerConnectionListener {
+@@ -317,6 +319,7 @@ public class ServerConnectionListener {
          Connection connection;
          while ((connection = this.pendingConnections.poll()) != null) {
              this.connections.add(connection);

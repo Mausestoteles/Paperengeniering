@@ -36,7 +36,7 @@
          super(MenuType.LECTERN, containerId);
          checkContainerSize(lectern, 1);
          checkContainerDataCount(lecternData, 1);
-@@ -34,10 +_,12 @@
+@@ -34,25 +_,51 @@
              }
          });
          this.addDataSlots(lecternData);
@@ -48,8 +48,21 @@
 +        io.papermc.paper.event.player.PlayerLecternPageChangeEvent playerLecternPageChangeEvent; org.bukkit.craftbukkit.inventory.CraftInventoryLectern bukkitView; // Paper - Add PlayerLecternPageChangeEvent
          if (buttonId >= 100) {
              int pageToSet = buttonId - 100;
-             this.setData(0, pageToSet);
-@@ -47,12 +_,26 @@
+-            this.setData(0, pageToSet);
++            // Paper start - Hardening - page jumps must also fire PlayerLecternPageChangeEvent, otherwise plugins locking pages are bypassed
++            int currentPage = this.lecternData.get(0);
++            bukkitView = (org.bukkit.craftbukkit.inventory.CraftInventoryLectern) getBukkitView().getTopInventory();
++            playerLecternPageChangeEvent = new io.papermc.paper.event.player.PlayerLecternPageChangeEvent(this.player, bukkitView.getHolder(), bukkitView.getBook(),
++                pageToSet < currentPage ? io.papermc.paper.event.player.PlayerLecternPageChangeEvent.PageChangeDirection.LEFT : io.papermc.paper.event.player.PlayerLecternPageChangeEvent.PageChangeDirection.RIGHT,
++                currentPage, pageToSet);
++            if (!playerLecternPageChangeEvent.callEvent()) {
++                return false;
++            }
++            this.setData(0, playerLecternPageChangeEvent.getNewPage());
++            // Paper end - Hardening
+             return true;
+         }
+ 
          switch (buttonId) {
              case 1: {
                  int currentPage = this.lecternData.get(0);

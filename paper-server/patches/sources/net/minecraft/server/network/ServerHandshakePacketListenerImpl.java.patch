@@ -29,7 +29,7 @@
          switch (packet.intention()) {
              case LOGIN:
                  this.beginLogin(packet, false);
-@@ -50,22 +_,119 @@
+@@ -50,22 +_,134 @@
              default:
                  throw new UnsupportedOperationException("Invalid intention " + packet.intention());
          }
@@ -121,7 +121,11 @@
 +                    if (event.getSocketAddressHostname() != null) this.connection.address = new java.net.InetSocketAddress(event.getSocketAddressHostname(), socketAddress instanceof java.net.InetSocketAddress ? ((java.net.InetSocketAddress) socketAddress).getPort() : 0);
 +                    this.connection.spoofedUUID = event.getUniqueId();
 +                    this.connection.spoofedProfile = gson.fromJson(event.getPropertiesJson(), com.mojang.authlib.properties.Property[].class);
-+                    handledByEvent = true; // Hooray, we did it!
++                    // Paper start - Hardening - only treat the handshake as handled when a listener actually changed something;
++                    // otherwise a merely observing listener would silently disable BungeeCord IP/UUID forwarding
++                    handledByEvent = event.getServerHostname() != null || event.getSocketAddressHostname() != null
++                        || event.getUniqueId() != null || event.getPropertiesJson() != null;
++                    // Paper end - Hardening
 +                }
 +            }
 +            // Paper end
@@ -133,7 +137,18 @@
 +                    // Paper start - Unix domain socket support
 +                    java.net.SocketAddress socketAddress = this.connection.getRemoteAddress();
 +                    this.connection.hostname = split[0];
-+                    this.connection.address = new java.net.InetSocketAddress(split[1], socketAddress instanceof java.net.InetSocketAddress ? ((java.net.InetSocketAddress) socketAddress).getPort() : 0);
++                    // Paper start - Hardening - forwarded address must be an IP literal; never do a DNS lookup on the netty thread
++                    final java.net.InetAddress forwardedAddress;
++                    try {
++                        forwardedAddress = com.google.common.net.InetAddresses.forString(split[1]);
++                    } catch (final IllegalArgumentException ex) {
++                        Component message = Component.literal("Invalid forwarded address");
++                        this.connection.send(new ClientboundLoginDisconnectPacket(message));
++                        this.connection.disconnect(message);
++                        return;
++                    }
++                    this.connection.address = new java.net.InetSocketAddress(forwardedAddress, socketAddress instanceof java.net.InetSocketAddress ? ((java.net.InetSocketAddress) socketAddress).getPort() : 0);
++                    // Paper end - Hardening
 +                    // Paper end - Unix domain socket support
 +                    this.connection.spoofedUUID = com.mojang.util.UndashedUuid.fromStringLenient(split[2]);
 +                } else {

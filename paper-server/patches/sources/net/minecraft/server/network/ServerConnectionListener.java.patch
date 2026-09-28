@@ -21,7 +21,7 @@
              this.channels
                  .add(
                      new ServerBootstrap()
-@@ -82,22 +_,63 @@
+@@ -82,22 +_,65 @@
                                      Connection connection = rateLimitPacketsPerSecond > 0
                                          ? new RateKickingConnection(rateLimitPacketsPerSecond)
                                          : new Connection(PacketFlow.SERVERBOUND);
@@ -32,6 +32,7 @@
 +                                            @Override
 +                                            public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
 +                                                if (msg instanceof io.netty.handler.codec.haproxy.HAProxyMessage message) {
++                                                    try { // Paper - Hardening - HAProxyMessage is reference counted and was never released
 +                                                    if (message.command() == io.netty.handler.codec.haproxy.HAProxyCommand.PROXY) {
 +                                                        String realAddress = message.sourceAddress();
 +                                                        int realPort = message.sourcePort();
@@ -47,6 +48,7 @@
 +                                                        connection.haProxyAddress = new java.net.InetSocketAddress(proxyAddress, proxyPort);
 +                                                        // Paper end - Add API to get player's proxy address
 +                                                    }
++                                                    } finally { message.release(); } // Paper - Hardening
 +                                                } else {
 +                                                    super.channelRead(ctx, msg);
 +                                                }

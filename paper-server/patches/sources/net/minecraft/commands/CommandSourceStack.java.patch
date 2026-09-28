@@ -47,13 +47,18 @@
      public CommandSourceStack withRotation(final Vec2 rotation) {
          return this.rotation.equals(rotation)
              ? this
-@@ -388,6 +_,32 @@
+@@ -388,6 +_,39 @@
          return this.permissions;
      }
  
 +    // Paper start - Fix permission levels for command blocks
 +    private boolean forceRespectPermissionLevel() {
-+        return this.source == CommandSource.NULL || (this.source instanceof final net.minecraft.world.level.BaseCommandBlock commandBlock && commandBlock.getLevel().paperConfig().commandBlocks.forceFollowPermLevel);
++        // Paper start - Hardening - BaseCommandBlock no longer implements CommandSource; the actual source is
++        // CloseableCommandBlockSource, so the previous instanceof never matched and force-follow-perm-level was dead
++        return this.source == CommandSource.NULL
++            || (this.source instanceof final net.minecraft.world.level.BaseCommandBlock.CloseableCommandBlockSource commandBlock
++                && commandBlock.getLevel().paperConfig().commandBlocks.forceFollowPermLevel);
++        // Paper end - Hardening
 +    }
 +    // Paper end - Fix permission levels for command blocks
 +
@@ -64,15 +69,17 @@
 +        // if the server is null, we must check the vanilla perm level system
 +        // if ignoreVanillaPermissions is true, we can skip vanilla perms and just run the bukkit perm check
 +        //noinspection ConstantValue
++        // Paper start - Hardening - the forced level check must also apply with ignore-vanilla-permissions, otherwise
++        // command blocks (op-by-default bukkit sender) could run /op, /stop, ... regardless of their permission level
++        final boolean hasPermLevel = this.permissions.hasPermission(permission);
++        if (this.forceRespectPermissionLevel()) { // NULL CommandSource and command blocks (if setting is enabled) should always pass the vanilla perm check
++            return hasPermLevel && hasBukkitPerm.getAsBoolean();
++        }
 +        if (this.getServer() == null || !this.getServer().server.ignoreVanillaPermissions) { // server & level are null for command function loading
-+            final boolean hasPermLevel = this.permissions.hasPermission(permission);
-+            if (this.forceRespectPermissionLevel()) { // NULL CommandSource and command blocks (if setting is enabled) should always pass the vanilla perm check
-+                return hasPermLevel && hasBukkitPerm.getAsBoolean();
-+            } else { // otherwise check vanilla perm first then bukkit perm, matching upstream behavior
-+                return hasPermLevel || hasBukkitPerm.getAsBoolean();
-+            }
++            return hasPermLevel || hasBukkitPerm.getAsBoolean(); // check vanilla perm first then bukkit perm, matching upstream behavior
 +        }
 +        return hasBukkitPerm.getAsBoolean();
++        // Paper end - Hardening
 +        // Paper end - Fix permission levels for command blocks
 +    }
 +    // CraftBukkit end

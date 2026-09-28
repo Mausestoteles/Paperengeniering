@@ -1,6 +1,11 @@
 --- a/net/minecraft/server/rcon/thread/RconClient.java
 +++ b/net/minecraft/server/rcon/thread/RconClient.java
-@@ -23,11 +_,14 @@
+@@ -20,23 +_,29 @@
+     private static final int SERVERDATA_AUTH_RESPONSE = 2;
+     private static final int SERVERDATA_AUTH_FAILURE = -1;
+     private boolean authed;
++    private static final int MAX_FAILED_AUTH_ATTEMPTS = 3; // Paper - Hardening
++    private int failedAuthAttempts; // Paper - Hardening
      private final Socket client;
      private final byte[] buf = new byte[1460];
      private final String rconPassword;
@@ -17,7 +22,10 @@
          this.client = socket;
  
          try {
-@@ -37,6 +_,7 @@
+-            this.client.setSoTimeout(0);
++            this.client.setSoTimeout(30_000); // Paper - Hardening - idle clients must not pin a thread forever
+         } catch (Exception ignored) {
+             this.running = false;
          }
  
          this.rconPassword = rconPassword;
@@ -25,7 +33,16 @@
      }
  
      @Override
-@@ -67,7 +_,7 @@
+@@ -61,13 +_,16 @@
+                     offset += 4;
+                     int cmd = PktUtils.intFromByteArray(this.buf, offset);
+                     offset += 4;
++                    if (offset > read) { // Paper - Hardening - short packet would yield a negative string length
++                        return;
++                    }
+                     switch (cmd) {
+                         case 2:
+                             if (this.authed) {
                                  String command = PktUtils.stringFromByteArray(this.buf, offset, read);
  
                                  try {
@@ -34,3 +51,27 @@
                                  } catch (Exception e) {
                                      this.sendCmdResponse(requestid, "Error executing: " + command + " (" + e.getMessage() + ")");
                                  }
+@@ -79,7 +_,9 @@
+                         case 3:
+                             String password = PktUtils.stringFromByteArray(this.buf, offset, read);
+                             offset += password.length();
+-                            if (!password.isEmpty() && password.equals(this.rconPassword)) {
++                            // Paper start - Hardening - constant-time comparison and per-connection failure limit
++                            if (!password.isEmpty() && java.security.MessageDigest.isEqual(
++                                password.getBytes(StandardCharsets.UTF_8), this.rconPassword.getBytes(StandardCharsets.UTF_8))) {
+                                 this.authed = true;
+                                 this.send(requestid, 2, "");
+                                 break;
+@@ -87,6 +_,12 @@
+ 
+                             this.authed = false;
+                             this.sendAuthFailure();
++                            if (++this.failedAuthAttempts >= MAX_FAILED_AUTH_ATTEMPTS) {
++                                LOGGER.warn("Closing RCON connection from {} after {} failed authentication attempts", this.client.getRemoteSocketAddress(), this.failedAuthAttempts);
++                                return;
++                            }
++                            Thread.sleep(1000L * this.failedAuthAttempts); // slow down brute forcing
++                            // Paper end - Hardening
+                             break;
+                         default:
+                             this.sendCmdResponse(requestid, String.format(Locale.ROOT, "Unknown request %s", Integer.toHexString(cmd)));

@@ -26,7 +26,7 @@
  
      public ServerCommonPacketListenerImpl(final MinecraftServer server, final Connection connection, final CommonListenerCookie cookie) {
          this.server = server;
-@@ -53,7 +_,18 @@
+@@ -53,7 +_,21 @@
          this.keepAliveTime = Util.getMillis();
          this.latency = cookie.latency();
          this.transferred = cookie.transferred();
@@ -41,6 +41,9 @@
 +    public abstract io.papermc.paper.connection.PlayerCommonConnection getApiConnection();
 +
 +    public abstract net.kyori.adventure.audience.Audience getAudience();
++    // Paper start - Hardening - dialog callback ids the current dialog exposed to this connection
++    public final java.util.Set<java.util.UUID> allowedDialogCallbacks = java.util.concurrent.ConcurrentHashMap.newKeySet();
++    // Paper end - Hardening
 +    // Paper end - configuration phase API
  
      private void close() {
@@ -137,7 +140,7 @@
 +        // Paper start - Implement click callbacks with custom click action
 +        final io.papermc.paper.event.player.PaperPlayerCustomClickEvent event = new io.papermc.paper.event.player.PaperPlayerCustomClickEvent(io.papermc.paper.adventure.PaperAdventure.asAdventure(packet.id()), this.getApiConnection(), packet.payload().orElse(null));
 +        event.callEvent();
-+        io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.DIALOG_CLICK_MANAGER.tryRunCallback(this.getAudience(), packet.id(), packet.payload());
++        io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.DIALOG_CLICK_MANAGER.tryRunCallback(this.getAudience(), packet.id(), packet.payload(), this.allowedDialogCallbacks); // Paper - Hardening - bind dialog callbacks to shown dialogs
 +        io.papermc.paper.adventure.providers.ClickCallbackProviderImpl.ADVENTURE_CLICK_MANAGER.tryRunCallback(this.getAudience(), packet.id(), packet.payload());
 +        // Paper end - Implement click callbacks with custom click action
      }
@@ -204,13 +207,20 @@
              }
  
              return false;
-@@ -158,6 +_,13 @@
+@@ -158,6 +_,20 @@
      }
  
      public void send(final Packet<?> packet, final @Nullable ChannelFutureListener listener) {
 +        // CraftBukkit start
 +        if (packet == null) {
 +            return;
++        // Paper start - Hardening - track which dialog callbacks this connection may trigger
++        } else if (packet instanceof net.minecraft.network.protocol.common.ClientboundShowDialogPacket showDialogPacket) {
++            this.allowedDialogCallbacks.clear();
++            io.papermc.paper.dialog.DialogCallbackCollector.collect(showDialogPacket.dialog().value(), this.allowedDialogCallbacks);
++        } else if (packet instanceof net.minecraft.network.protocol.common.ClientboundClearDialogPacket) {
++            this.allowedDialogCallbacks.clear();
++        // Paper end - Hardening
 +        } else if (packet instanceof net.minecraft.network.protocol.game.ClientboundSetDefaultSpawnPositionPacket defaultSpawnPositionPacket && this instanceof ServerGamePacketListenerImpl serverGamePacketListener) {
 +            serverGamePacketListener.player.compassTarget = org.bukkit.craftbukkit.util.CraftLocation.toBukkit(defaultSpawnPositionPacket.respawnData().pos(), serverGamePacketListener.getPlayer().level());
 +        }

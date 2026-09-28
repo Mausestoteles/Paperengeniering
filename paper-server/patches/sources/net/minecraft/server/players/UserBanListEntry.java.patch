@@ -25,8 +25,8 @@
 +            String asString = json.get("uuid").getAsString();
 +
 +            try {
-+                uuid = java.util.UUID.fromString(asString);
-+            } catch (Throwable var4) {
++                uuid = com.mojang.util.UndashedUuid.fromStringLenient(asString); // Paper - Hardening - also accept undashed uuids
++            } catch (IllegalArgumentException var4) { // Paper - Hardening
 +            }
 +
 +        }

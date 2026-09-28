@@ -34272,7 +34272,7 @@ index b6300e04a26020e4add76c015c7973091097fb8f..d2a1bce35f9cb54d6db848a0a679da58
          this.chunkType = chunkType;
          this.heightmapsAfter = heightmapsAfter;
 diff --git a/net/minecraft/world/level/chunk/status/ChunkStatusTasks.java b/net/minecraft/world/level/chunk/status/ChunkStatusTasks.java
-index 0e13899caa0abeedf54cc5f1192276b99884a853..55e242900224d0a117fb2045b863c122404b8301 100644
+index 0e13899caa0abeedf54cc5f1192276b99884a853..07993eb8c41e9eddde7049625cbf7a0638aa20e9 100644
 --- a/net/minecraft/world/level/chunk/status/ChunkStatusTasks.java
 +++ b/net/minecraft/world/level/chunk/status/ChunkStatusTasks.java
 @@ -195,7 +195,7 @@ public class ChunkStatusTasks {
@@ -34299,6 +34299,24 @@ index 0e13899caa0abeedf54cc5f1192276b99884a853..55e242900224d0a117fb2045b863c122
              // Paper end - duplicate uuid resolving
          }
      }
+@@ -240,7 +240,7 @@ public class ChunkStatusTasks {
+             && java.util.Objects.equals(other.getEncodeId(), entity.getEncodeId())
+             && entity.getBukkitEntity().getLocation().distance(other.getBukkitEntity().getLocation()) < level.paperConfig().entities.spawning.duplicateUuid.safeRegenDeleteRange
+         ) {
+-            entity.discard(null);
++            entity.setRemoved(net.minecraft.world.entity.Entity.RemovalReason.UNLOADED_WITH_PLAYER, org.bukkit.event.entity.EntityRemoveEvent.Cause.DISCARD); // Paper - Hardening - no destroy semantics: a rejected duplicate container entity must not spill its contents
+             return true;
+         }
+         if (!other.isRemoved()) {
+@@ -250,7 +250,7 @@ public class ChunkStatusTasks {
+                     break;
+                 }
+                 case DELETE: {
+-                    entity.discard(org.bukkit.event.entity.EntityRemoveEvent.Cause.DISCARD);
++                    entity.setRemoved(net.minecraft.world.entity.Entity.RemovalReason.UNLOADED_WITH_PLAYER, org.bukkit.event.entity.EntityRemoveEvent.Cause.DISCARD); // Paper - Hardening - no destroy semantics
+                     return true;
+                 }
+                 default:
 diff --git a/net/minecraft/world/level/chunk/status/ChunkStep.java b/net/minecraft/world/level/chunk/status/ChunkStep.java
 index 503111a8d54e6bb134df87ff2a099d1b032f6747..3536bc2287ab5b285790dc496836cf43020b698c 100644
 --- a/net/minecraft/world/level/chunk/status/ChunkStep.java

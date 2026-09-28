@@ -1,5 +1,28 @@
 --- a/net/minecraft/server/rcon/thread/RconThread.java
 +++ b/net/minecraft/server/rcon/thread/RconThread.java
+@@ -18,6 +_,7 @@
+     private final ServerSocket socket;
+     private final String rconPassword;
+     private final List<RconClient> clients = Lists.newArrayList();
++    private static final int MAX_CLIENTS = Integer.getInteger("paper.rcon.maxClients", 16); // Paper - Hardening
+     private final ServerInterface serverInterface;
+ 
+     private RconThread(final ServerInterface serverInterface, final ServerSocket socket, final String rconPassword) {
+@@ -37,6 +_,14 @@
+             while (this.running) {
+                 try {
+                     Socket client = this.socket.accept();
++                    // Paper start - Hardening - cap concurrent RCON clients (one platform thread each)
++                    this.clearClients();
++                    if (this.clients.size() >= MAX_CLIENTS) {
++                        LOGGER.warn("Rejecting RCON connection from {}: too many open RCON connections", client.getRemoteSocketAddress());
++                        try { client.close(); } catch (IOException ignored) {}
++                        continue;
++                    }
++                    // Paper end - Hardening
+                     RconClient rconClient = new RconClient(this.serverInterface, this.rconPassword, client);
+                     rconClient.start();
+                     this.clients.add(rconClient);
 @@ -56,7 +_,7 @@
  
      public static @Nullable RconThread create(final ServerInterface serverInterface) {

@@ -9,7 +9,7 @@
 +        FriendlyByteBuf buf = input.readNullable((buf2) -> {
 +            int readableBytes = buf2.readableBytes();
 +            if (readableBytes >= 0 && readableBytes <= MAX_PAYLOAD_SIZE) {
-+                return new FriendlyByteBuf(buf2.readBytes(readableBytes));
++                return new FriendlyByteBuf(io.netty.buffer.Unpooled.copiedBuffer(buf2.readSlice(readableBytes))); // Paper - Hardening - heap copy, a dropped packet cannot leak pooled direct memory
 +            } else {
 +                throw new IllegalArgumentException("Payload may not be larger than " + MAX_PAYLOAD_SIZE + " bytes");
 +            }

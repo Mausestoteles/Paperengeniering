@@ -37,7 +37,7 @@
      }
  
      public Component getName() {
-@@ -163,13 +_,21 @@
+@@ -163,13 +_,22 @@
  
      public abstract boolean isValid();
  
@@ -54,6 +54,7 @@
              this.level = level;
 +            this.trackOutput = trackOutput;
 +        }
++        public ServerLevel getLevel() { return this.level; } // Paper - Hardening
 +        @io.papermc.paper.annotation.DoNotUse @Deprecated
 +        public CloseableCommandBlockSource(final ServerLevel level) { // Paper - public
 +            this(level, true);
