@@ -1,0 +1,11 @@
+--- a/net/minecraft/server/commands/GameRuleCommand.java
++++ b/net/minecraft/server/commands/GameRuleCommand.java
+@@ -47,7 +_,7 @@
+             throw ERROR_GAME_RULE_NOT_SET.create(gameRule, seralizedValue);
+         }
+ 
+-        gameRules.set(gameRule, value, context.getSource().getServer());
++        value = org.bukkit.craftbukkit.event.CraftEventFactory.handleGameRuleSet(gameRule, value, source.getLevel(), source.getBukkitSender()).value(); // Paper - per-world game rules and event
+         source.sendSuccess(() -> Component.translatable("commands.gamerule.set", gameRule.id(), seralizedValue), true);
+         return gameRule.getCommandResult(value);
+     }

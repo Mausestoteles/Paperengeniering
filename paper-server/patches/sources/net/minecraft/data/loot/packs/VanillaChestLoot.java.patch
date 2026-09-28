@@ -1,0 +1,11 @@
+--- a/net/minecraft/data/loot/packs/VanillaChestLoot.java
++++ b/net/minecraft/data/loot/packs/VanillaChestLoot.java
+@@ -1214,7 +_,7 @@
+                             .add(
+                                 LootItem.lootTableItem(Items.COMPASS)
+                                     .apply(SetItemCountFunction.setCount(ContextIntProviders.exactly(1)))
+-                                    .apply(SetItemDamageFunction.setDamage(ContextFloatProviders.between(0.15F, 0.8F)))
++                                    /*.apply(SetItemDamageFunction.setDamage(ContextFloatProviders.between(0.15F, 0.8F)))*/ // Paper - Remove set damage lootable from compasses
+                                     .setWeight(1)
+                             )
+                             .add(LootItem.lootTableItem(Items.BUCKET).apply(SetItemCountFunction.setCount(ContextIntProviders.between(1, 2))).setWeight(1))

@@ -1,0 +1,25 @@
+--- a/net/minecraft/world/level/block/DetectorRailBlock.java
++++ b/net/minecraft/world/level/block/DetectorRailBlock.java
+@@ -55,6 +_,7 @@
+         final InsideBlockEffectApplier effectApplier,
+         final boolean isPrecise
+     ) {
++        if (!new io.papermc.paper.event.entity.EntityInsideBlockEvent(entity.getBukkitEntity(), org.bukkit.craftbukkit.block.CraftBlock.at(level, pos)).callEvent()) { return; } // Paper - Add EntityInsideBlockEvent
+         if (!level.isClientSide()) {
+             if (!state.getValue(POWERED)) {
+                 this.checkPressed(level, pos, state);
+@@ -86,6 +_,14 @@
+             if (!entities.isEmpty()) {
+                 shouldBePressed = true;
+             }
++
++            // Paper start - Call BlockRedstoneEvent
++            if (wasPressed != shouldBePressed) {
++                if (!org.bukkit.craftbukkit.event.CraftEventFactory.callBinaryRedstoneChange(level, pos, shouldBePressed)) {
++                    return;
++                }
++            }
++            // Paper end - Call BlockRedstoneEvent
+ 
+             if (shouldBePressed && !wasPressed) {
+                 BlockState newState = state.setValue(POWERED, true);
