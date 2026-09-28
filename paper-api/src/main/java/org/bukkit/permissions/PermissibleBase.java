@@ -193,6 +193,12 @@ public class PermissibleBase implements Permissible {
     }
 
     private void calculateChildPermissions(@NotNull Map<String, Boolean> children, boolean invert, @Nullable PermissionAttachment attachment) {
+        calculateChildPermissions(children, invert, attachment, new java.util.HashSet<>()); // Hardening - cycle protection
+    }
+
+    // Hardening - 'path' holds the permissions currently being expanded; a child that is already on the path is a
+    // cycle (a -> b -> a) and is not expanded again, preventing a StackOverflowError on every recalculation.
+    private void calculateChildPermissions(@NotNull Map<String, Boolean> children, boolean invert, @Nullable PermissionAttachment attachment, @NotNull java.util.Set<String> path) {
         for (Map.Entry<String, Boolean> entry : children.entrySet()) {
             String name = entry.getKey();
 
@@ -203,8 +209,9 @@ public class PermissibleBase implements Permissible {
             permissions.put(lname, new PermissionAttachmentInfo(parent, lname, attachment, value));
             Bukkit.getServer().getPluginManager().subscribeToPermission(name, parent);
 
-            if (perm != null) {
-                calculateChildPermissions(perm.getChildren(), !value, attachment);
+            if (perm != null && path.add(lname)) { // Hardening - cycle protection
+                calculateChildPermissions(perm.getChildren(), !value, attachment, path);
+                path.remove(lname); // Hardening
             }
         }
     }

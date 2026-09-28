@@ -200,7 +200,7 @@ import org.yaml.snakeyaml.representer.Representer;
  *</pre></blockquote>
  */
 public final class PluginDescriptionFile implements io.papermc.paper.plugin.configuration.PluginMeta { // Paper
-    private static final Pattern VALID_NAME = Pattern.compile("^[A-Za-z0-9 _.-]+$");
+    private static final Pattern VALID_NAME = Pattern.compile("^(?!\\.+$)[A-Za-z0-9 _.-]+$"); // Hardening - reject "." / ".." (data folder path traversal)
     private static final ThreadLocal<Yaml> YAML = new ThreadLocal<Yaml>() {
         @Override
         @NotNull

@@ -104,6 +104,10 @@ public final class PaperCommand extends Command {
 
         final @Nullable Pair<String, PaperSubcommand> subCommand = resolveCommand(args[0]);
         if (subCommand != null) {
+            // Hardening - same per-subcommand permission check as execute(), but silent
+            if (!sender.hasPermission(BASE_PERM + subCommand.first()) && !sender.hasPermission("bukkit.command.paper")) {
+                return Collections.emptyList();
+            }
             return subCommand.second().tabComplete(sender, subCommand.first(), Arrays.copyOfRange(args, 1, args.length));
         }
 

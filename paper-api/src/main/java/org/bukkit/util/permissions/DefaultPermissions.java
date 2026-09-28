@@ -32,7 +32,7 @@ public final class DefaultPermissions {
         if (withLegacy) {
             Permission legacy = new Permission(LEGACY_PREFIX + result.getName(), result.getDescription(), PermissionDefault.FALSE);
             legacy.getChildren().put(result.getName(), true);
-            registerPermission(perm, false);
+            registerPermission(legacy, false); // Hardening - register the legacy node, not the original again
         }
 
         return result;

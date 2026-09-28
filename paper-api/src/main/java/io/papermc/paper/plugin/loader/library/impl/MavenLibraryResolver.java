@@ -120,6 +120,13 @@ public class MavenLibraryResolver implements ClassPathLibrary {
      * dependencies from
      */
     public void addRepository(final RemoteRepository remoteRepository) {
+        // Hardening start - libraries are loaded as code into the server; refuse unauthenticated transports,
+        // checksums fetched over the same plain-text channel do not protect against tampering.
+        if (!isSecureRepositoryUrl(remoteRepository.getUrl())) {
+            throw new IllegalArgumentException("Refusing insecure (non-HTTPS) library repository " + remoteRepository.getUrl()
+                + ". Start with -D" + ALLOW_INSECURE_PROPERTY + "=true to allow it anyway.");
+        }
+        // Hardening end
         if (MAVEN_CENTRAL_URLS.stream().anyMatch(remoteRepository.getUrl()::startsWith)) {
             LOGGER.warn(
                 "Use of Maven Central as a CDN is against the Maven Central Terms of Service. Use MavenLibraryResolver.MAVEN_CENTRAL_DEFAULT_MIRROR instead.",
@@ -157,9 +164,27 @@ public class MavenLibraryResolver implements ClassPathLibrary {
         if (central == null) {
             central = System.getProperty("org.bukkit.plugin.java.LibraryLoader.centralURL");
         }
+        if (central != null && !isSecureRepositoryUrl(central)) { // Hardening
+            LoggerFactory.getLogger("MavenLibraryResolver").error("Ignoring insecure (non-HTTPS) central repository override {}", central);
+            central = null;
+        }
         if (central == null) {
             central = "https://maven-central.storage-download.googleapis.com/maven2";
         }
         return central;
     }
+
+    // Hardening start
+    private static final String ALLOW_INSECURE_PROPERTY = "paper.allowInsecureLibraryRepositories";
+
+    private static boolean isSecureRepositoryUrl(final String url) {
+        if (url == null) {
+            return false;
+        }
+        if (url.regionMatches(true, 0, "https://", 0, 8) || url.regionMatches(true, 0, "file:", 0, 5)) {
+            return true;
+        }
+        return Boolean.getBoolean(ALLOW_INSECURE_PROPERTY);
+    }
+    // Hardening end
 }

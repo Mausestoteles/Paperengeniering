@@ -25,7 +25,7 @@ public final class PluginConfigConstraints {
 
         final class Factory implements Constraint.Factory<PluginName, String> {
 
-            private static final Pattern VALID_NAME = Pattern.compile("^[A-Za-z\\d _.-]+$");
+            private static final Pattern VALID_NAME = Pattern.compile("^(?!\\.+$)[A-Za-z\\d _.-]+$"); // Hardening - reject "." / ".." (data folder path traversal)
 
             @Override
             public Constraint<String> make(PluginName data, Type type) {

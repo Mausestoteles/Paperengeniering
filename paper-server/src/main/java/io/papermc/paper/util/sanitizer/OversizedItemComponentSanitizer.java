@@ -25,6 +25,9 @@ import org.spongepowered.configurate.objectmapping.ConfigSerializable;
 
 public final class OversizedItemComponentSanitizer {
 
+    // Must match the size limit enforced by BundleContents
+    private static final int MAX_BUNDLE_REPRESENTATION_ENTRIES = 256;
+
     /*
     These represent codecs that are meant to help get rid of possibly big items by ALWAYS hiding this data.
      */
@@ -110,7 +113,13 @@ public final class OversizedItemComponentSanitizer {
 
         // A bundles content weight may be anywhere from 0 to, basically, infinity.
         // A weight of 1 is the usual maximum case
-        int sizeUsed = Mth.mulAndTruncate(contents.weight().getOrThrow(), 64);
+        // Hardening start - never throw while sanitizing: an error weight or a weight above the 256 entry cap of
+        // BundleContents would otherwise throw during packet/chunk encoding (tick crash / viewer disconnects).
+        // Compute in long space to avoid int overflow and clamp to what the representation can hold.
+        final org.apache.commons.lang3.math.Fraction weight = contents.weight().result().orElse(org.apache.commons.lang3.math.Fraction.ONE);
+        final long scaledWeight = (long) weight.getNumerator() * 64L / Math.max(1, weight.getDenominator());
+        int sizeUsed = (int) Math.clamp(scaledWeight, 0L, MAX_BUNDLE_REPRESENTATION_ENTRIES * 64L);
+        // Hardening end
         // Early out, *most* bundles should not be overfilled above a weight of one.
         if (sizeUsed <= 64) {
             return new BundleContents(List.of(new ItemStackTemplate(Items.PAPER, Math.max(1, sizeUsed))));

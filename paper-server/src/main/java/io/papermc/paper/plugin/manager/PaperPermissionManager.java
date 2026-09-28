@@ -75,7 +75,18 @@ abstract class PaperPermissionManager implements PermissionManager {
 
     @Override
     public void removePermission(@NotNull String name) {
-        this.permissions().remove(name.toLowerCase(java.util.Locale.ENGLISH));
+        // Hardening start - also drop the permission from the default sets, otherwise its old default
+        // (e.g. TRUE/NOT_OP) keeps being granted to every permissible until restart
+        final Permission removed = this.permissions().remove(name.toLowerCase(java.util.Locale.ENGLISH));
+        if (removed != null) {
+            if (this.defaultPerms().get(true).remove(removed)) {
+                this.dirtyPermissibles(true);
+            }
+            if (this.defaultPerms().get(false).remove(removed)) {
+                this.dirtyPermissibles(false);
+            }
+        }
+        // Hardening end
     }
 
     @Override

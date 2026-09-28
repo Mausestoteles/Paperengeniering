@@ -182,8 +182,18 @@ public final class DumpListenersCommand implements PaperSubcommand {
     }
 
     private static Class<?> findClass(final String className) throws ClassNotFoundException {
+        // Hardening - load without initialising and only accept event classes, so arbitrary classes' static
+        // initialisers are never run and no unrelated static getHandlerList is invoked
+        final Class<?> clazz = findClass0(className);
+        if (!org.bukkit.event.Event.class.isAssignableFrom(clazz)) {
+            throw new ClassNotFoundException(className);
+        }
+        return clazz;
+    }
+
+    private static Class<?> findClass0(final String className) throws ClassNotFoundException {
         try {
-            return Class.forName(className);
+            return Class.forName(className, false, DumpListenersCommand.class.getClassLoader());
         } catch (final ClassNotFoundException ignore) {
             for (final Plugin plugin : Bukkit.getServer().getPluginManager().getPlugins()) {
                 if (!plugin.isEnabled()) {
